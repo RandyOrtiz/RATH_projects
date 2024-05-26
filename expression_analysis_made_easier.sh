@@ -80,35 +80,6 @@ rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ### Download the uniprot reference proteome
 curl -o "$rule_reference_proteome" "$URL1"
 
@@ -511,6 +482,11 @@ mv $temp_file $output_file
 echo "Output file created: $output_file"
 
 
+
+
+
+
+
 ### GO Analysis w/ Heatmap
 ### Create table with expression values, species, and GO terms USING NEW FORMAT GO TABLE(not genes)
 
@@ -615,18 +591,33 @@ done
 
 
 
+# Read the input file into an array
+mapfile -t lines < "DE_table"
 
+# Extract headers from the first line
+IFS=$'\t' read -r -a headers <<< "${lines[0]}"
 
+# Process each column except the first one
+for ((i=1; i<${#headers[@]}; i++)); do
+    column_has_non_zero=false
+    temp_file="${headers[i]}_string_results.txt"
+    : > "$temp_file"
 
+    # Iterate through lines to check for non-zero values and extract relevant row headers
+    for ((j=1; j<${#lines[@]}; j++)); do
+        IFS=$'\t' read -r -a line <<< "${lines[j]}"
+        if (( $(echo "${line[i]} != 0" | bc -l) )); then
+            column_has_non_zero=true
+            name=$(echo "${line[0]}" | awk -F'|' '{print $2}')
+            echo -e "$name" >> "$temp_file"
+        fi
+    done
 
-
-
-
-
-
-
-
-
+    # If the column had no non-zero values, remove the temp file
+    if ! $column_has_non_zero; then
+        rm "$temp_file"
+    fi
+done
 
 
 
