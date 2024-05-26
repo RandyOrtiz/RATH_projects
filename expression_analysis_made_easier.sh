@@ -51,20 +51,21 @@ if [ -z "$GO_TERM" ] || [ -z "$TAX_ID" ]; then
 fi
 
 # Construct the URL
-URL1="https://rest.uniprot.org/uniprotkb/stream?format=fasta&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
-URL2="https://rest.uniprot.org/uniprotkb/stream?fields=accession%2Cgo_id&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
-URL3="https://rest.uniprot.org/uniprotkb/stream?fields=accession%2Cgo&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
-URL4="https://rest.uniprot.org/uniprotkb/stream?fields=accession%2Cgo_p&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
-URL5="https://rest.uniprot.org/uniprotkb/stream?fields=accession%2Cgo_f&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
+URL1="https://rest.uniprot.org/uniprotkb/stream?compressed=true&format=fasta&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
+URL2="https://rest.uniprot.org/uniprotkb/stream?compressed=true&fields=accession%2Cgo_id&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
+URL3="https://rest.uniprot.org/uniprotkb/stream?compressed=true&fields=accession%2Cgo&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
+URL4="https://rest.uniprot.org/uniprotkb/stream?compressed=true&fields=accession%2Cgo_p&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
+URL5="https://rest.uniprot.org/uniprotkb/stream?compressed=true&fields=accession%2Cgo_f&format=tsv&query=%28%28go%3A${GO_TERM}%29+AND+%28taxonomy_id%3A${TAX_ID}%29%29"
 
 # Define the output file name
-rule_reference_proteome="Uniprot_Reference_Proteome_GO${GO_TERM}_TAX${TAX_ID}.fasta"
-rule_reference_proteome_GO_table="Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.txt"
-rule_reference_proteome_GO_name_table="Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.txt"
-rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.txt"
-rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.txt"
+rule_reference_proteome="Uniprot_Reference_Proteome_GO${GO_TERM}_TAX${TAX_ID}.fasta.gz"
+rule_reference_proteome_GO_table="Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
+rule_reference_proteome_GO_name_table="Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
+rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
+rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
 
 
+<<COMMENT
 
 
 ### Download the uniprot reference proteome
@@ -77,6 +78,11 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Download successful. File saved as $rule_reference_proteome."
+
+# For gzip (.gz) files
+gunzip "$rule_reference_proteome"
+rule_reference_proteome="Uniprot_Reference_Proteome_GO${GO_TERM}_TAX${TAX_ID}.fasta"
+
 
 # Replace space with underscores in reference proteome headers
 sed -i 's/ /_/g' "$rule_reference_proteome"
@@ -97,6 +103,11 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Download successful. File saved as $rule_reference_proteome_GO_table."
+
+# For gzip (.gz) files
+gunzip "$rule_reference_proteome_GO_table"
+rule_reference_proteome_GO_table="Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+
 
 ### Modify GO table
 
@@ -120,8 +131,7 @@ done < "$rule_reference_proteome_GO_table"
 
 # Overwrite the input file with the contents of the temporary file
 mv "$temp_file" "$rule_reference_proteome_GO_table"
-awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' rule_reference_proteome_GO_table > 'temp_file.txt' && mv 'temp_file.txt' rule_reference_proteome_GO_table
-
+awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' $rule_reference_proteome_GO_table > 'temp_file.txt' && mv 'temp_file.txt' $rule_reference_proteome_GO_table
 
 
 
@@ -137,6 +147,11 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Download successful. File saved as $rule_reference_proteome_GO_name_table."
+
+# For gzip (.gz) files
+gunzip "$rule_reference_proteome_GO_name_table"
+rule_reference_proteome_GO_name_table="Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+
 
 ### Modify GO table
 
@@ -160,7 +175,7 @@ done < "$rule_reference_proteome_GO_name_table"
 
 # Overwrite the input file with the contents of the temporary file
 mv "$temp_file" "$rule_reference_proteome_GO_name_table"
-awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' rule_reference_proteome_GO_name_table > 'temp_file.txt' && mv 'temp_file.txt' rule_reference_proteome_GO_name_table
+awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' $rule_reference_proteome_GO_name_table > 'temp_file.txt' && mv 'temp_file.txt' $rule_reference_proteome_GO_name_table
 
 
 
@@ -177,6 +192,11 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Download successful. File saved as $rule_reference_proteome_GO_bio_table."
+
+# For gzip (.gz) files
+gunzip "$rule_reference_proteome_GO_bio_table"
+rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+
 
 ### Modify GO table
 
@@ -200,7 +220,7 @@ done < "$rule_reference_proteome_GO_bio_table"
 
 # Overwrite the input file with the contents of the temporary file
 mv "$temp_file" "$rule_reference_proteome_GO_bio_table"
-awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' rule_reference_proteome_GO_bio_table > 'temp_file.txt' && mv 'temp_file.txt' rule_reference_proteome_GO_bio_table
+awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' $rule_reference_proteome_GO_bio_table > 'temp_file.txt' && mv 'temp_file.txt' $rule_reference_proteome_GO_bio_table
 
 
 
@@ -220,6 +240,11 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Download successful. File saved as $rule_reference_proteome_GO_mol_table."
+
+# For gzip (.gz) files
+gunzip "$rule_reference_proteome_GO_mol_table"
+rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+
 
 ### Modify GO table
 
@@ -243,7 +268,16 @@ done < "$rule_reference_proteome_GO_mol_table"
 
 # Overwrite the input file with the contents of the temporary file
 mv "$temp_file" "$rule_reference_proteome_GO_mol_table"
-awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' rule_reference_proteome_GO_mol_table > 'temp_file.txt' && mv 'temp_file.txt' rule_reference_proteome_GO_mol_table
+awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' $rule_reference_proteome_GO_mol_table > 'temp_file.txt' && mv 'temp_file.txt' $rule_reference_proteome_GO_mol_table
+
+COMMENT
+rule_reference_proteome="Uniprot_Reference_Proteome_GO${GO_TERM}_TAX${TAX_ID}.fasta"
+rule_reference_proteome_GO_table="Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+rule_reference_proteome_GO_name_table="Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+
+
 
 
 ### Setup Query
