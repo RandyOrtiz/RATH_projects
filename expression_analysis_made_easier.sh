@@ -3,6 +3,8 @@
 ##### Good Merged Assembly to Differential Expression Analysis Results
 ##### Make sure your folders are organized correctly with raw reads and assembly in each folder, all folders in the same working directory as well
 ##### Usage: bash expression_analysis_made_easier.sh --go 0006955 --tax 8342
+##### Place .sh and .py scripts in working directory
+
 
 # Paths to software, Change this to reflect your paths
 rule_diamond='/home/velox/Documents/Pincho_v01_Master/bin/diamond-linux64/diamond'
@@ -63,6 +65,46 @@ rule_reference_proteome_GO_table="Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv
 rule_reference_proteome_GO_name_table="Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
 rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
 rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -270,6 +312,8 @@ mv "$temp_file" "$rule_reference_proteome_GO_mol_table"
 awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' $rule_reference_proteome_GO_mol_table > 'temp_file.txt' && mv 'temp_file.txt' $rule_reference_proteome_GO_mol_table
 
 
+
+
 ### Setup Query
 for dir in */; do
 cd $dir
@@ -470,6 +514,100 @@ echo "Output file created: $output_file"
 ### GO Analysis w/ Heatmap
 ### Create table with expression values, species, and GO terms USING NEW FORMAT GO TABLE(not genes)
 
+rule_reference_proteome="Uniprot_Reference_Proteome_GO${GO_TERM}_TAX${TAX_ID}.fasta"
+rule_reference_proteome_GO_table="Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+rule_reference_proteome_GO_name_table="Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
+
+# List of input and output files
+rule_go_file_list=($rule_reference_proteome_GO_table $rule_reference_proteome_GO_name_table $rule_reference_proteome_GO_bio_table $rule_reference_proteome_GO_mol_table)
+rule_out_file_list=("Exp_Results_Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.txt" "Exp_Results_Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.txt" "Exp_Results_Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.txt" "Exp_Results_Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.txt")
+
+
+for i in {0..3}; do
+    input_file="${rule_go_file_list[$i]}"
+    final_output="${rule_out_file_list[$i]}"
+    temp_file=$(mktemp)  # Temporary file to store the modified content
+
+    # Read the input file and create an associative array
+    declare -A go_dict
+    while IFS=$'\t' read -r entry go_id; do
+        if [ "$entry" == "Entry" ]; then
+            continue
+        fi
+        if [ -n "${go_dict[$entry]}" ]; then
+            go_dict["$entry"]="${go_dict[$entry]};$go_id"
+        else
+            go_dict["$entry"]="$go_id"
+        fi
+    done < "$input_file"
+
+    # Read the file to modify line by line
+    {
+        read -r header  # Read and keep the header
+        echo "$header" > "$temp_file"
+
+        while IFS=$'\t' read -r name value1 value2; do
+            modified_line="$name"
+            entry=$(echo "$modified_line" | awk -F'|' '{print $2}')
+            if [ -n "${go_dict[$entry]}" ]; then
+                go_ids="${go_dict[$entry]}"
+                IFS=';' read -ra go_id_array <<< "$go_ids"
+                for go_id in "${go_id_array[@]}"; do
+                    echo -e "$go_id\t$value1\t$value2" >> "$temp_file"
+                done
+            else
+                echo -e "$name\t$value1\t$value2" >> "$temp_file"
+            fi
+        done
+    } < "DE_table"
+
+    # Filter out rows that do not contain any number besides 0 in the second and third columns (excluding the first row and first column)
+    awk 'BEGIN{FS=OFS="\t"} NR==1 || $2 ~ /[1-9]/ || $3 ~ /[1-9]/' "$temp_file" > "$temp_file.filtered"
+
+    # Remove rows that do not contain 'GO:' (excluding the header)
+    awk 'BEGIN{FS=OFS="\t"} NR==1 || /GO:/' "$temp_file.filtered" > "$temp_file.filtered.go"
+
+    # Sort the file by the first column, excluding the header
+    { head -n 1 "$temp_file.filtered.go"; tail -n +2 "$temp_file.filtered.go" | sort -k1,1; } > "$temp_file.sorted"
+
+    # Merge rows with the same header and add their values
+    awk 'BEGIN{FS=OFS="\t"} 
+    NR==1 {header=$0; next} 
+    {
+        key=$1;
+        for (i=2; i<=NF; i++) {
+            sum[key, i] += $i;
+        }
+        headers=NF;
+    }
+    END {
+        print header;
+        for (key in sum) {
+            split(key, keys, SUBSEP);
+            if (!seen[keys[1]]) {
+                seen[keys[1]] = 1;
+                row=keys[1];
+                for (i=2; i<=headers; i++) {
+                    row = row OFS sum[keys[1], i];
+                }
+                print row;
+            }
+        }
+    }' "$temp_file.sorted" > "$temp_file.merged"
+
+    # Sort the merged output again, excluding the header
+    { head -n 1 "$temp_file.merged"; tail -n +2 "$temp_file.merged" | sort -k1,1; } > "$final_output"
+
+    # Clear the associative array for the next iteration
+    unset go_dict
+
+    # Remove temporary files
+    rm "$temp_file" "$temp_file.filtered" "$temp_file.filtered.go" "$temp_file.sorted" "$temp_file.merged"
+done
+
+
 
 
 ### String Analysis
@@ -477,5 +615,61 @@ echo "Output file created: $output_file"
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Generate heatmap
+
+# Ensure all files exist
+for file in "${rule_out_file_list[@]}"; do
+    if [ ! -f $file ]; then
+        echo "$file not found!"
+        exit 1
+    fi
+done
+
+# Run the Python script to generate the heatmaps
+python3 create_heatmaps.py "${rule_out_file_list[@]}"
+
+# Check if the heatmaps were created
+for file in "${rule_out_file_list[@]}"; do
+    image_file="${file/.txt/.png}"
+    if [ -f $image_file ]; then
+        echo "Heatmap generated successfully: $image_file"
+    else
+        echo "Failed to generate heatmap for $file."
+    fi
+done
+
+# Close the terminal
+exit
+
+
+
+
+
+
+
+
+
 #############################
+
+
 
