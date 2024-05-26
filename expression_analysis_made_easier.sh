@@ -65,7 +65,6 @@ rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX
 rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv.gz"
 
 
-<<COMMENT
 
 
 ### Download the uniprot reference proteome
@@ -269,15 +268,6 @@ done < "$rule_reference_proteome_GO_mol_table"
 # Overwrite the input file with the contents of the temporary file
 mv "$temp_file" "$rule_reference_proteome_GO_mol_table"
 awk -F '\t' 'BEGIN {OFS="\t"} {sub(/^ /, "", $2); print}' $rule_reference_proteome_GO_mol_table > 'temp_file.txt' && mv 'temp_file.txt' $rule_reference_proteome_GO_mol_table
-
-COMMENT
-rule_reference_proteome="Uniprot_Reference_Proteome_GO${GO_TERM}_TAX${TAX_ID}.fasta"
-rule_reference_proteome_GO_table="Uniprot_GO_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
-rule_reference_proteome_GO_name_table="Uniprot_GO_name_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
-rule_reference_proteome_GO_bio_table="Uniprot_GO_bio_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
-rule_reference_proteome_GO_mol_table="Uniprot_GO_mol_Table_GO${GO_TERM}_TAX${TAX_ID}.tsv"
-
-
 
 
 ### Setup Query
