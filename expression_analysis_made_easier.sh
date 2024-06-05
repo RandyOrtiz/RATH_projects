@@ -329,7 +329,7 @@ echo $read2
 rule_reference_proteome_dir="$rule_cwd/$rule_reference_proteome"
 
 # Diamond Blastx Query against Reference Proteome
-$rule_diamond blastx -d $rule_reference_proteome_dir -q $sorted_query -o cc_matches -e 0.0000000001 --outfmt 6 -b5 -c1 -p 24
+$rule_diamond blastx -d $rule_reference_proteome_dir -q $sorted_query -o cc_matches -e 0.0000000001 --outfmt 6 --max-target-seqs 1 -b5 -c1 -p 24
 
 #diamond will align and list the ranges of the alignments
 
